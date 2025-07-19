@@ -38,14 +38,19 @@ export function useFilteredPokemon(
   limit = 20, 
   offset = 0, 
   typeFilter?: string, 
-  searchQuery?: string
+  searchQuery?: string,
+  enabled = true,
+  forceRefreshKey?: number
 ) {
   // Debounce search query to avoid excessive API calls
   const debouncedSearchQuery = useDebounce(searchQuery, 300)
   
   return useQuery({
-    queryKey: ['filtered-pokemon', limit, offset, typeFilter, debouncedSearchQuery],
+    queryKey: ['filtered-pokemon', limit, offset, typeFilter, debouncedSearchQuery, forceRefreshKey],
     queryFn: () => fetchFilteredPokemon(limit, offset, typeFilter, debouncedSearchQuery),
+    enabled: enabled,
+    staleTime: 0, // Always refetch when enabled
+    gcTime: 0, // Don't cache results
   })
 }
 

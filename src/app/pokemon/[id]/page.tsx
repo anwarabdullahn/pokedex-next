@@ -1,6 +1,7 @@
 'use client'
 
 import { usePokemon, usePokemonSpecies } from '@/lib/hooks/use-pokemon'
+import { useFavorites } from '@/lib/hooks/use-favorites'
 import { PokemonStats } from '@/components/pokemon/pokemon-stats'
 import { PokemonAbilities } from '@/components/pokemon/pokemon-abilities'
 import { PokemonEvolutionChain } from '@/components/pokemon/pokemon-evolution-chain'
@@ -67,6 +68,8 @@ export default function PokemonDetailPage() {
     isLoading: speciesLoading,
     error: speciesError 
   } = usePokemonSpecies(pokemon?.id || 0)
+
+  const { toggleFavorite, isFavorite } = useFavorites()
 
   const isLoading = pokemonLoading || speciesLoading
   const error = pokemonError || speciesError
@@ -138,8 +141,20 @@ export default function PokemonDetailPage() {
           </Link>
           
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
-              <Heart className="w-4 h-4" />
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => pokemon && toggleFavorite({
+                id: pokemon.id,
+                name: pokemon.name,
+                types: pokemon.types.map(t => t.type.name),
+                sprite: pokemon.sprites.other?.['official-artwork']?.front_default || 
+                        pokemon.sprites.front_default || 
+                        `/placeholder-pokemon.png`
+              })}
+              className={isFavorite(pokemon?.id || 0) ? 'text-red-500 hover:text-red-600' : ''}
+            >
+              <Heart className={`w-4 h-4 ${isFavorite(pokemon?.id || 0) ? 'fill-current' : ''}`} />
             </Button>
             <Button variant="outline" size="sm">
               <Share2 className="w-4 h-4" />

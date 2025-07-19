@@ -1,8 +1,11 @@
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { SimplePokemon, PokemonTypeName } from '@/lib/types/pokemon'
 import { cva } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
+import { useFavorites } from '@/lib/hooks/use-favorites'
+import { Heart } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -14,55 +17,73 @@ const cardVariants = cva(
 interface PokemonCardProps {
   pokemon: SimplePokemon
   className?: string
-  showTypes?: boolean // Control whether to show type badges
 }
 
-export function PokemonCard({ pokemon, className, showTypes = false }: PokemonCardProps) {
+export function PokemonCard({ pokemon, className }: PokemonCardProps) {
+  const { toggleFavorite, isFavorite } = useFavorites()
+
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.preventDefault() // Prevent navigation
+    e.stopPropagation() // Prevent event bubbling
+    
+    toggleFavorite({
+      id: pokemon.id,
+      name: pokemon.name,
+      types: pokemon.types,
+      sprite: pokemon.sprite
+    })
+  }
+
   return (
-    <Link href={`/pokemon/${pokemon.id}`}>
-      <Card className={cn(cardVariants(), className)}>
-        <CardContent className="p-4">
-          {/* Pokemon Image */}
-          <div className="relative aspect-square mb-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg overflow-hidden">
-            <Image
-              src={pokemon.sprite}
-              alt={pokemon.name}
-              fill
-              className="object-contain p-2 group-hover:scale-110 transition-transform duration-200"
-              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
-            />
-            
-            {/* Pokemon ID Badge */}
-            <div className="absolute top-2 right-2">
-              <Badge variant="secondary" className="text-xs font-mono">
-                #{pokemon.id.toString().padStart(3, '0')}
-              </Badge>
+    <div className="relative group">
+      <Link href={`/pokemon/${pokemon.id}`}>
+        <Card className={cn(cardVariants(), className)}>
+          <CardContent className="p-4">
+            {/* Pokemon Image */}
+            <div className="relative aspect-square mb-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg overflow-hidden">
+              <Image
+                src={pokemon.sprite}
+                alt={pokemon.name}
+                fill
+                className="object-contain p-2 group-hover:scale-110 transition-transform duration-200"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+              />
+              
+              {/* Pokemon ID Badge */}
+              <div className="absolute top-2 right-2">
+                <Badge variant="secondary" className="text-xs font-mono">
+                  #{pokemon.id.toString().padStart(3, '0')}
+                </Badge>
+              </div>
             </div>
-          </div>
 
           {/* Pokemon Name */}
           <h3 className="font-semibold text-lg capitalize mb-2 text-center">
             {pokemon.name}
           </h3>
 
-          {/* Type Badges - Only show if explicitly requested and types are available */}
+                      {/* Consistent message for all cards */}
           <div className="flex gap-1 justify-center flex-wrap min-h-[1.5rem]">
-            {showTypes && pokemon.types.length > 0 ? (
-              <PokemonTypeBadges types={pokemon.types} />
-            ) : showTypes ? (
-              <div className="flex gap-1">
-                <div className="h-6 w-16 bg-gray-200 rounded animate-pulse"></div>
-                <div className="h-6 w-16 bg-gray-200 rounded animate-pulse"></div>
-              </div>
-            ) : (
-              <div className="text-xs text-gray-500">
-                Click to view details
-              </div>
-            )}
+            <div className="text-xs text-gray-500">
+              Click to view details
+            </div>
           </div>
-        </CardContent>
-      </Card>
-    </Link>
+          </CardContent>
+        </Card>
+      </Link>
+      
+      {/* Favorite Button */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={handleFavoriteClick}
+        className={`absolute top-2 left-2 w-8 h-8 p-0 bg-white/80 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity z-10 ${
+          isFavorite(pokemon.id) ? 'opacity-100' : ''
+        }`}
+      >
+        <Heart className={`w-4 h-4 ${isFavorite(pokemon.id) ? 'text-red-500 fill-current' : 'text-gray-600'}`} />
+      </Button>
+    </div>
   )
 }
 

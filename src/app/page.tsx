@@ -4,7 +4,7 @@ import { PokemonGrid } from '@/components/pokemon/pokemon-grid'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Search, Gamepad2, BookOpen } from 'lucide-react'
+import { Search, Gamepad2, BookOpen, Users, Heart } from 'lucide-react'
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 
@@ -70,6 +70,18 @@ export default function HomePage() {
                 <Link href="/" className="flex items-center gap-2">
                   <BookOpen className="w-4 h-4" />
                   Pokédex
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/teams" className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  Teams
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/favorites" className="flex items-center gap-2">
+                  <Heart className="w-4 h-4" />
+                  Favorites
                 </Link>
               </Button>
               <Button variant="outline" asChild>
