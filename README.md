@@ -216,18 +216,3 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **[shadcn](https://twitter.com/shadcn)** - Beautiful UI component library
 - **[Vercel](https://vercel.com/)** - Hosting and deployment platform
 
-## 📞 Contact
-
-**Your Name** - [@yourusername](https://twitter.com/yourusername) - your.email@example.com
-
-**Project Link**: [https://github.com/yourusername/pokedex-battle-arena](https://github.com/yourusername/pokedex-battle-arena)
-
----
-
-<div align="center">
-
-**[⭐ Star this repo](https://github.com/yourusername/pokedex-battle-arena)** if you found it helpful!
-
-Made with ❤️ and ⚡ by [Your Name]
-
-</div>
