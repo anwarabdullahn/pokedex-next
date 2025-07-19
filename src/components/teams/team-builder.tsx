@@ -241,12 +241,180 @@ export function TeamBuilder() {
     setTeamName('')
   }, [team, teamName])
 
-  const randomizeTeam = useCallback(() => {
-    // Generate random team (placeholder - we'd use real Pokemon data)
-    const randomIds = Array.from({ length: 6 }, () => Math.floor(Math.random() * 151) + 1)
-    // This is a simplified version - we'd fetch real Pokemon data here
-    alert('Random team generation coming soon!')
-  }, [])
+  const [isGeneratingTeam, setIsGeneratingTeam] = useState(false)
+
+  const randomizeTeam = useCallback(async () => {
+    if (isGeneratingTeam) return
+    
+    setIsGeneratingTeam(true)
+    console.log('Starting balanced random team generation...')
+    
+    try {
+      // Step 1: Fetch a diverse pool of Pokemon (150 Pokemon across different ranges)
+      const poolSize = 150
+      const randomOffset = Math.floor(Math.random() * (1000 - poolSize)) // Random starting point
+      
+      console.log(`Fetching Pokemon pool from offset ${randomOffset}`)
+      const poolResults = await fetch(`https://pokeapi.co/api/v2/pokemon?limit=${poolSize}&offset=${randomOffset}`)
+        .then(res => res.json())
+      
+      // Step 2: Fetch detailed data for random selection from the pool
+      const selectedIndices: number[] = []
+      while (selectedIndices.length < 20) { // Get 20 candidates to choose from
+        const randomIndex = Math.floor(Math.random() * poolResults.results.length)
+        if (!selectedIndices.includes(randomIndex)) {
+          selectedIndices.push(randomIndex)
+        }
+      }
+      
+      console.log('Fetching detailed data for candidate Pokemon...')
+      const candidatePromises = selectedIndices.map(async (index) => {
+        const pokemon = poolResults.results[index]
+        const detailResponse = await fetch(pokemon.url)
+        const detailData = await detailResponse.json()
+        
+        return {
+          id: detailData.id,
+          name: detailData.name,
+          types: detailData.types.map((t: any) => t.type.name),
+          sprite: detailData.sprites.other?.['official-artwork']?.front_default || 
+                  detailData.sprites.front_default || 
+                  '/placeholder-pokemon.png',
+          stats: {
+            hp: detailData.stats.find((s: any) => s.stat.name === 'hp')?.base_stat || 100,
+            attack: detailData.stats.find((s: any) => s.stat.name === 'attack')?.base_stat || 100,
+            defense: detailData.stats.find((s: any) => s.stat.name === 'defense')?.base_stat || 100,
+            'special-attack': detailData.stats.find((s: any) => s.stat.name === 'special-attack')?.base_stat || 100,
+            'special-defense': detailData.stats.find((s: any) => s.stat.name === 'special-defense')?.base_stat || 100,
+            speed: detailData.stats.find((s: any) => s.stat.name === 'speed')?.base_stat || 100
+          },
+          totalStats: detailData.stats.reduce((sum: number, stat: any) => sum + stat.base_stat, 0),
+          isLegendary: detailData.id > 144 && detailData.id < 152, // Simple legendary check
+        }
+      })
+      
+      const candidates = await Promise.all(candidatePromises)
+      console.log('Candidates fetched:', candidates.length)
+      
+      // Step 3: Apply balanced selection algorithm
+      const selectedTeam: TeamPokemon[] = []
+      const usedTypes = new Set<string>()
+      const typeGroups: { [key: string]: any[] } = {}
+      
+      // Group candidates by primary type
+      candidates.forEach(pokemon => {
+        const primaryType = pokemon.types[0]
+        if (!typeGroups[primaryType]) {
+          typeGroups[primaryType] = []
+        }
+        typeGroups[primaryType].push(pokemon)
+      })
+      
+      console.log('Applying balanced selection...')
+      
+      // Step 4: Select team with constraints
+      const availableTypes = Object.keys(typeGroups)
+      const statRoles = ['fast', 'tanky', 'balanced', 'attacker', 'special', 'support']
+      let roleIndex = 0
+      
+      for (let slot = 0; slot < 6; slot++) {
+        let selectedPokemon = null
+        
+        // Try to pick from unused types first
+        const unusedTypes = availableTypes.filter(type => 
+          !usedTypes.has(type) && typeGroups[type].length > 0
+        )
+        
+        let candidatePool = []
+        
+        if (unusedTypes.length > 0) {
+          // Pick from unused type
+          const randomType = unusedTypes[Math.floor(Math.random() * unusedTypes.length)]
+          candidatePool = typeGroups[randomType]
+        } else {
+          // Allow type reuse but prefer less used types
+          candidatePool = candidates.filter(p => 
+            !selectedTeam.some(selected => selected.id === p.id)
+          )
+        }
+        
+        if (candidatePool.length > 0) {
+          // Apply role-based selection
+          const currentRole = statRoles[roleIndex % statRoles.length]
+          
+          let roleFiltered = candidatePool
+          switch (currentRole) {
+            case 'fast':
+              roleFiltered = candidatePool.sort((a, b) => b.stats.speed - a.stats.speed).slice(0, 3)
+              break
+            case 'tanky':
+              roleFiltered = candidatePool.sort((a, b) => 
+                (b.stats.hp + b.stats.defense) - (a.stats.hp + a.stats.defense)
+              ).slice(0, 3)
+              break
+            case 'attacker':
+              roleFiltered = candidatePool.sort((a, b) => b.stats.attack - a.stats.attack).slice(0, 3)
+              break
+            case 'special':
+              roleFiltered = candidatePool.sort((a, b) => b.stats['special-attack'] - a.stats['special-attack']).slice(0, 3)
+              break
+            case 'balanced':
+              roleFiltered = candidatePool.sort((a, b) => b.totalStats - a.totalStats).slice(0, 3)
+              break
+            default:
+              roleFiltered = candidatePool.slice(0, 3)
+          }
+          
+          selectedPokemon = roleFiltered[Math.floor(Math.random() * roleFiltered.length)]
+          
+          if (selectedPokemon) {
+            selectedTeam.push({
+              id: selectedPokemon.id,
+              name: selectedPokemon.name,
+              types: selectedPokemon.types,
+              sprite: selectedPokemon.sprite,
+              stats: selectedPokemon.stats
+            })
+            
+            // Mark types as used (but allow some reuse)
+            if (usedTypes.size < 4) { // Only restrict for first 4 slots
+              usedTypes.add(selectedPokemon.types[0])
+            }
+            
+            // Remove from candidate pool
+            Object.keys(typeGroups).forEach(type => {
+              typeGroups[type] = typeGroups[type].filter(p => p.id !== selectedPokemon.id)
+            })
+          }
+        }
+        
+        roleIndex++
+      }
+      
+      console.log('Generated balanced team:', selectedTeam.map(p => `${p.name} (${p.types.join('/')})`))
+      
+      // Step 5: Apply the generated team
+      const newTeam = Array(6).fill(null)
+      selectedTeam.forEach((pokemon, index) => {
+        if (index < 6) {
+          newTeam[index] = pokemon
+        }
+      })
+      
+      setTeam(newTeam)
+      
+      // Step 6: Show success message with team info
+      const typeCount = new Set(selectedTeam.flatMap(p => p.types)).size
+      const message = `Generated balanced team!\n• ${selectedTeam.length} Pokemon\n• ${typeCount} unique types\n• Mixed stat distributions for strategic play`
+      alert(message)
+      
+    } catch (error) {
+      console.error('Error generating random team:', error)
+      alert('Failed to generate team. Please try again.')
+    } finally {
+      setIsGeneratingTeam(false)
+    }
+  }, [isGeneratingTeam])
 
   const openPokemonSelector = useCallback((slotIndex: number) => {
     console.log('Opening Pokemon selector for slot:', slotIndex)
@@ -297,10 +465,20 @@ export function TeamBuilder() {
         <Button 
           variant="outline" 
           onClick={randomizeTeam}
+          disabled={isGeneratingTeam}
           className="flex items-center gap-2"
         >
-          <Shuffle className="w-4 h-4" />
-          Random
+          {isGeneratingTeam ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Shuffle className="w-4 h-4" />
+              Random
+            </>
+          )}
         </Button>
       </div>
 
@@ -437,15 +615,8 @@ export function TeamBuilder() {
                           <div className="font-medium text-sm capitalize mb-1">
                             {pokemon.name}
                           </div>
-                          <div className="flex justify-center gap-1">
-                            {pokemon.types.map(type => (
-                              <Badge 
-                                key={type}
-                                className={typeBadgeVariants({ type: type as PokemonTypeName })}
-                              >
-                                {type}
-                              </Badge>
-                            ))}
+                          <div className="text-xs text-gray-500 text-center mt-1">
+                            Click to select
                           </div>
                         </div>
                       </div>
@@ -547,15 +718,8 @@ function TeamSlot({
           <div className="font-medium text-xs capitalize mb-1">
             {pokemon.name}
           </div>
-          <div className="flex justify-center gap-1">
-            {pokemon.types.slice(0, 2).map(type => (
-              <Badge 
-                key={type}
-                className={`${typeBadgeVariants({ type: type as PokemonTypeName })} text-[10px] px-1 py-0`}
-              >
-                {type}
-              </Badge>
-            ))}
+          <div className="text-[10px] text-gray-500 text-center">
+            #{pokemon.id.toString().padStart(3, '0')}
           </div>
         </div>
       </CardContent>
