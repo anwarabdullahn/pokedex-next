@@ -129,8 +129,9 @@ export async function fetchEvolutionChain(url: string) {
 
 // Helper function to get Pokemon ID from URL
 export function getPokemonIdFromUrl(url: string): number {
-  const matches = url.match(/\/pokemon\/(\d+)\//)
-  return matches ? parseInt(matches[1], 10) : 0
+  // Handle both /pokemon/ID/ and /pokemon-species/ID/ URLs
+  const matches = url.match(/\/(pokemon|pokemon-species)\/(\d+)\//)
+  return matches ? parseInt(matches[2], 10) : 0
 }
 
 // Transform Pokemon data to simplified format for lists

@@ -3,6 +3,9 @@
 import { usePokemon, usePokemonSpecies } from '@/lib/hooks/use-pokemon'
 import { PokemonStats } from '@/components/pokemon/pokemon-stats'
 import { PokemonAbilities } from '@/components/pokemon/pokemon-abilities'
+import { PokemonEvolutionChain } from '@/components/pokemon/pokemon-evolution-chain'
+import { PokemonMoves } from '@/components/pokemon/pokemon-moves'
+import { TypeEffectivenessChart } from '@/components/pokemon/type-effectiveness-chart'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -237,10 +240,25 @@ export default function PokemonDetailPage() {
         </Card>
 
         {/* Stats and Abilities Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <PokemonStats stats={pokemon.stats} />
           <PokemonAbilities abilities={pokemon.abilities} />
         </div>
+
+        {/* Type Effectiveness */}
+        <div className="mb-6">
+          <TypeEffectivenessChart types={pokemon.types.map(t => t.type.name)} />
+        </div>
+
+        {/* Evolution Chain */}
+        {species?.evolution_chain?.url && (
+          <div className="mb-6">
+            <PokemonEvolutionChain evolutionChainUrl={species.evolution_chain.url} />
+          </div>
+        )}
+
+        {/* Moves */}
+        <PokemonMoves moves={pokemon.moves} />
       </div>
     </div>
   )
