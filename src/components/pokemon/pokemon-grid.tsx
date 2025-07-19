@@ -27,6 +27,10 @@ export function PokemonGrid({ searchQuery, typeFilter, className }: PokemonGridP
   const total = data?.total || 0
   const hasMore = data?.hasMore || false
 
+  // Show types when we have search/filter
+  const hasFilters = !!(searchQuery || (typeFilter && typeFilter !== 'all'))
+  const showTypes = hasFilters
+
   const handleLoadMore = () => {
     setOffset(prev => prev + limit)
   }
@@ -79,6 +83,8 @@ export function PokemonGrid({ searchQuery, typeFilter, className }: PokemonGridP
         </div>
       )}
 
+
+
       {/* Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {/* Loading skeletons */}
@@ -90,7 +96,11 @@ export function PokemonGrid({ searchQuery, typeFilter, className }: PokemonGridP
 
         {/* Pokemon cards */}
         {pokemonList.map((pokemon) => (
-          <PokemonCard key={pokemon.id} pokemon={pokemon} />
+          <PokemonCard 
+            key={pokemon.id} 
+            pokemon={pokemon} 
+            showTypes={showTypes}
+          />
         ))}
       </div>
 

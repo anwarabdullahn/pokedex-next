@@ -2,6 +2,11 @@ import { Pokemon, PokemonListItem, PaginatedResponse, SimplePokemon, Type } from
 
 const POKEAPI_BASE_URL = 'https://pokeapi.co/api/v2'
 
+// Cache for all Pokemon list (to avoid repeated fetches)
+let allPokemonCache: PokemonListItem[] | null = null
+// Cache for type data (to avoid repeated type fetches)
+const typeDataCache: Record<string, Type> = {}
+
 // Fetch list of Pokemon with pagination
 export async function fetchPokemonList(
   limit = 20,
@@ -24,18 +29,69 @@ export async function fetchAllPokemon(): Promise<PaginatedResponse<PokemonListIt
     throw new Error('Failed to fetch all Pokemon')
   }
   
-  return response.json()
+  const data = await response.json()
+  // Cache the results
+  allPokemonCache = data.results
+  return data
 }
 
-// Fetch Pokemon by type
+// Get cached Pokemon list or fetch if not cached
+export async function getAllPokemonList(): Promise<PokemonListItem[]> {
+  if (allPokemonCache) {
+    return allPokemonCache
+  }
+  
+  const data = await fetchAllPokemon()
+  return data.results
+}
+
+// Fetch Pokemon by type with caching
 export async function fetchPokemonByType(typeName: string): Promise<Type> {
+  if (typeDataCache[typeName]) {
+    return typeDataCache[typeName]
+  }
+  
   const response = await fetch(`${POKEAPI_BASE_URL}/type/${typeName}`)
   
   if (!response.ok) {
     throw new Error(`Failed to fetch Pokemon of type: ${typeName}`)
   }
   
-  return response.json()
+  const data = await response.json()
+  typeDataCache[typeName] = data
+  return data
+}
+
+// NEW: Get ALL Pokemon types data at once (for comprehensive type mapping)
+export async function fetchAllTypesData(): Promise<Record<string, string[]>> {
+  const typeNames = [
+    'normal', 'fire', 'water', 'electric', 'grass', 'ice',
+    'fighting', 'poison', 'ground', 'flying', 'psychic', 'bug',
+    'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'
+  ]
+  
+  const typeMapping: Record<string, string[]> = {}
+  
+  // Fetch all types in parallel
+  const typePromises = typeNames.map(async (typeName) => {
+    const typeData = await fetchPokemonByType(typeName)
+    return { typeName, typeData }
+  })
+  
+  const typeResults = await Promise.all(typePromises)
+  
+  // Build reverse mapping: pokemon ID -> types
+  typeResults.forEach(({ typeName, typeData }) => {
+    typeData.pokemon.forEach((pokemonEntry) => {
+      const pokemonId = getPokemonIdFromUrl(pokemonEntry.pokemon.url)
+      if (!typeMapping[pokemonId]) {
+        typeMapping[pokemonId] = []
+      }
+      typeMapping[pokemonId].push(typeName)
+    })
+  })
+  
+  return typeMapping
 }
 
 // Fetch detailed Pokemon data by ID or name
@@ -89,8 +145,23 @@ export function transformToSimplePokemon(pokemon: Pokemon): SimplePokemon {
   }
 }
 
-// Fetch multiple Pokemon details for a list (used for homepage)
+// OPTIMIZED: Create SimplePokemon from list data with types from type mapping
+export function createSimplePokemonFromListItem(
+  item: PokemonListItem, 
+  typeMapping?: Record<string, string[]>
+): SimplePokemon {
+  const id = getPokemonIdFromUrl(item.url)
+  return {
+    id,
+    name: item.name,
+    sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`,
+    types: typeMapping?.[id] || [] // Use type mapping if available
+  }
+}
+
+// OPTIMIZED: Fetch multiple Pokemon details ONLY when we need types for filtering
 export async function fetchPokemonBatch(pokemonList: PokemonListItem[]): Promise<SimplePokemon[]> {
+  // Only fetch if we actually need type information for filtering
   const promises = pokemonList.map(async (item) => {
     const id = getPokemonIdFromUrl(item.url)
     const pokemon = await fetchPokemon(id)
@@ -100,7 +171,21 @@ export async function fetchPokemonBatch(pokemonList: PokemonListItem[]): Promise
   return Promise.all(promises)
 }
 
-// NEW: Get paginated Pokemon with proper type filtering
+// NEW: Optimized batch creation with type mapping
+export async function createPokemonBatchFromListWithTypes(
+  pokemonList: PokemonListItem[]
+): Promise<SimplePokemon[]> {
+  // Get type mapping for these specific Pokemon
+  const typeMapping = await fetchAllTypesData()
+  return pokemonList.map(item => createSimplePokemonFromListItem(item, typeMapping))
+}
+
+// NEW: Optimized batch creation without types (super fast)
+export function createPokemonBatchFromList(pokemonList: PokemonListItem[]): SimplePokemon[] {
+  return pokemonList.map(item => createSimplePokemonFromListItem(item))
+}
+
+// NEW: Get paginated Pokemon with smart type loading
 export async function fetchFilteredPokemon(
   limit = 20,
   offset = 0,
@@ -108,50 +193,100 @@ export async function fetchFilteredPokemon(
   searchQuery?: string
 ): Promise<{ pokemon: SimplePokemon[], total: number, hasMore: boolean }> {
   
-  // If no filters, use simple pagination
-  if (!typeFilter || typeFilter === 'all') {
-    const response = await fetchPokemonList(limit, offset)
-    const pokemonData = await fetchPokemonBatch(response.results)
-    
-    // Apply search filter if provided
-    let filteredPokemon = pokemonData
-    if (searchQuery) {
-      filteredPokemon = pokemonData.filter(pokemon => 
-        pokemon.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        pokemon.id.toString().includes(searchQuery)
-      )
-    }
-    
-    return {
-      pokemon: filteredPokemon,
-      total: response.count,
-      hasMore: !!response.next
-    }
+  // If we have search query, we need to search through ALL Pokemon
+  if (searchQuery && searchQuery.trim()) {
+    return handleSearchWithPagination(limit, offset, typeFilter, searchQuery.trim())
   }
   
-  // For type filtering, get all Pokemon of that type first
-  const typeData = await fetchPokemonByType(typeFilter)
-  const typePokemonList = typeData.pokemon.map(p => ({
-    name: p.pokemon.name,
-    url: p.pokemon.url
-  }))
+  // If only type filter (no search), use type-specific endpoint
+  if (typeFilter && typeFilter !== 'all') {
+    return handleTypeFilterWithPagination(limit, offset, typeFilter)
+  }
   
-  // Apply search filter to type results
-  let filteredList = typePokemonList
-  if (searchQuery) {
-    filteredList = typePokemonList.filter(pokemon =>
-      pokemon.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // No filters - SUPER OPTIMIZED: use simple list without any type data
+  const response = await fetchPokemonList(limit, offset)
+  const pokemonData = createPokemonBatchFromList(response.results)
+  
+  return {
+    pokemon: pokemonData,
+    total: response.count,
+    hasMore: !!response.next
+  }
+}
+
+// Handle search functionality with proper pagination
+async function handleSearchWithPagination(
+  limit: number,
+  offset: number,
+  typeFilter?: string,
+  searchQuery?: string
+): Promise<{ pokemon: SimplePokemon[], total: number, hasMore: boolean }> {
+  let pokemonList: PokemonListItem[]
+  
+  // If we also have a type filter, get Pokemon of that type first
+  if (typeFilter && typeFilter !== 'all') {
+    const typeData = await fetchPokemonByType(typeFilter)
+    pokemonList = typeData.pokemon.map(p => ({
+      name: p.pokemon.name,
+      url: p.pokemon.url
+    }))
+  } else {
+    // Get all Pokemon for search
+    pokemonList = await getAllPokemonList()
+  }
+  
+  // Filter by search query
+  const filteredList = pokemonList.filter(pokemon => {
+    const pokemonId = getPokemonIdFromUrl(pokemon.url)
+    return (
+      pokemon.name.toLowerCase().includes(searchQuery!.toLowerCase()) ||
+      pokemonId.toString().includes(searchQuery!)
     )
-  }
+  })
   
   // Apply pagination to filtered results
   const paginatedList = filteredList.slice(offset, offset + limit)
+  
+  // For search results, we need type information, so we fetch individual Pokemon
   const pokemonData = await fetchPokemonBatch(paginatedList)
   
   return {
     pokemon: pokemonData,
     total: filteredList.length,
     hasMore: offset + limit < filteredList.length
+  }
+}
+
+// Handle type filter with pagination
+async function handleTypeFilterWithPagination(
+  limit: number,
+  offset: number,
+  typeFilter: string
+): Promise<{ pokemon: SimplePokemon[], total: number, hasMore: boolean }> {
+  const typeData = await fetchPokemonByType(typeFilter)
+  const typePokemonList = typeData.pokemon.map(p => ({
+    name: p.pokemon.name,
+    url: p.pokemon.url
+  }))
+  
+  // Apply pagination to type results
+  const paginatedList = typePokemonList.slice(offset, offset + limit)
+  
+  // OPTIMIZED: Create Pokemon with type info directly from type data
+  const pokemonData = paginatedList.map(item => {
+    const id = getPokemonIdFromUrl(item.url)
+    return {
+      id,
+      name: item.name,
+      sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`,
+      types: [typeFilter] // We know the type from the filter!
+    }
+  })
+  
+  return {
+    pokemon: pokemonData,
+    total: typePokemonList.length,
+    hasMore: offset + limit < typePokemonList.length
   }
 }
 

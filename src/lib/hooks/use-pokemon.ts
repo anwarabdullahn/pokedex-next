@@ -51,18 +51,23 @@ export function usePokemonBatch(limit = 20, offset = 0) {
   })
 }
 
-// NEW: Hook for filtered Pokemon with proper pagination
+// Hook for filtered Pokemon with proper pagination and search
 export function useFilteredPokemon(
   limit = 20, 
   offset = 0, 
   typeFilter?: string, 
   searchQuery?: string
 ) {
+  // Normalize search query
+  const normalizedSearchQuery = searchQuery?.trim() || undefined
+  
   return useQuery({
-    queryKey: ['filtered-pokemon', limit, offset, typeFilter, searchQuery],
-    queryFn: () => fetchFilteredPokemon(limit, offset, typeFilter, searchQuery),
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    // Cache type-specific results longer since they don't change often
-    gcTime: typeFilter && typeFilter !== 'all' ? 15 * 60 * 1000 : 10 * 60 * 1000,
+    queryKey: ['filtered-pokemon', limit, offset, typeFilter, normalizedSearchQuery],
+    queryFn: () => fetchFilteredPokemon(limit, offset, typeFilter, normalizedSearchQuery),
+    staleTime: normalizedSearchQuery ? 2 * 60 * 1000 : 5 * 60 * 1000, // Shorter cache for search results
+    // Cache search results for shorter time since they're more dynamic
+    gcTime: normalizedSearchQuery ? 5 * 60 * 1000 : (typeFilter && typeFilter !== 'all' ? 15 * 60 * 1000 : 10 * 60 * 1000),
+    // Don't refetch search results on window focus to avoid interrupting user
+    refetchOnWindowFocus: !normalizedSearchQuery,
   })
 } 

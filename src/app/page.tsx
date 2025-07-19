@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Search, Gamepad2, BookOpen } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 
 const POKEMON_TYPES = [
@@ -14,9 +14,34 @@ const POKEMON_TYPES = [
   'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'
 ]
 
+// Custom hook for debounced search
+function useDebounce(value: string, delay: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
+
+    return () => {
+      clearTimeout(handler)
+    }
+  }, [value, delay])
+
+  return debouncedValue
+}
+
 export default function HomePage() {
-  const [searchQuery, setSearchQuery] = useState('')
+  const [searchInput, setSearchInput] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
+
+  // Debounce search query to avoid too many API calls
+  const debouncedSearchQuery = useDebounce(searchInput, 300)
+
+  // Only pass non-empty search queries
+  const searchQuery = debouncedSearchQuery.trim() || undefined
+
+  const hasActiveFilters = searchQuery || typeFilter !== 'all'
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
@@ -80,11 +105,16 @@ export default function HomePage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
                   placeholder="Search Pokémon by name or ID..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   className="pl-10"
                 />
               </div>
+              {searchInput && searchInput !== debouncedSearchQuery && (
+                <div className="mt-1 text-xs text-gray-500">
+                  Searching...
+                </div>
+              )}
             </div>
 
             {/* Type Filter */}
@@ -105,13 +135,13 @@ export default function HomePage() {
           </div>
 
           {/* Active filters display */}
-          {(searchQuery || typeFilter !== 'all') && (
+          {hasActiveFilters && (
             <div className="mt-4 pt-4 border-t flex items-center gap-2">
               <span className="text-sm text-gray-600">Active filters:</span>
               {searchQuery && (
-                                 <Badge variant="secondary">
-                   Search: &ldquo;{searchQuery}&rdquo;
-                 </Badge>
+                <Badge variant="secondary">
+                  Search: &ldquo;{searchQuery}&rdquo;
+                </Badge>
               )}
               {typeFilter !== 'all' && (
                 <Badge variant="secondary" className="capitalize">
@@ -122,13 +152,23 @@ export default function HomePage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => {
-                  setSearchQuery('')
+                  setSearchInput('')
                   setTypeFilter('all')
                 }}
                 className="ml-auto text-xs"
               >
                 Clear all
               </Button>
+            </div>
+          )}
+
+          {/* Search tips */}
+          {!hasActiveFilters && (
+            <div className="mt-4 pt-4 border-t">
+              <p className="text-sm text-gray-500">
+                                 💡 <strong>Search tips:</strong> Try searching by name (e.g., &ldquo;pikachu&rdquo;), 
+                 ID number (e.g., &ldquo;25&rdquo;), or combine with type filters for better results.
+              </p>
             </div>
           )}
         </div>
