@@ -5,6 +5,7 @@
 A comprehensive Next.js application combining an advanced Pokédex with a Pokemon Battle Simulator. This project will demonstrate modern React/Next.js patterns, state management, and interactive gameplay.
 
 ### 🎯 Learning Objectives
+
 - Master Next.js 14 App Router
 - Implement Server/Client Components effectively
 - Practice TanStack Query for data fetching and caching
@@ -18,7 +19,7 @@ A comprehensive Next.js application combining an advanced Pokédex with a Pokemo
 
 - **Framework**: Next.js 14 (App Router)
 - **Language**: TypeScript
-- **Styling**: Tailwind CSS + shadcn/ui
+- **Styling**: Tailwind CSS + shadcn/u`i
 - **State Management**: TanStack Query + React Context/Zustand
 - **API**: PokeAPI (https://pokeapi.co/)
 - **Database**: Local Storage (expandable to Supabase/Prisma)
@@ -30,6 +31,7 @@ A comprehensive Next.js application combining an advanced Pokédex with a Pokemo
 ## 📊 Progress Tracker
 
 ### Phase 1: Foundation & Setup
+
 - [x] ✅ Initialize Next.js project with TypeScript
 - [ ] 🔄 Configure shadcn/ui components
 - [ ] 📦 Install and setup TanStack Query
@@ -38,6 +40,7 @@ A comprehensive Next.js application combining an advanced Pokédex with a Pokemo
 - [ ] 🎨 Setup custom Tailwind theme (Pokemon-inspired colors)
 
 ### Phase 2: Core Pokédex Features
+
 - [ ] 📋 Pokemon list page with grid/card layout
 - [ ] 🔍 Search and filter functionality
 - [ ] 📄 Individual Pokemon detail pages
@@ -47,6 +50,7 @@ A comprehensive Next.js application combining an advanced Pokédex with a Pokemo
 - [ ] 🏷️ Type effectiveness chart
 
 ### Phase 3: Team Management
+
 - [ ] 👥 Team builder component
 - [ ] 💾 Save/load teams functionality
 - [ ] ⭐ Favorites system
@@ -55,6 +59,7 @@ A comprehensive Next.js application combining an advanced Pokédex with a Pokemo
 - [ ] 📋 Team comparison feature
 
 ### Phase 4: Battle System Core
+
 - [ ] ⚔️ Battle engine foundation
 - [ ] 🎲 Damage calculation system
 - [ ] 🎯 Move effectiveness logic
@@ -63,6 +68,7 @@ A comprehensive Next.js application combining an advanced Pokédex with a Pokemo
 - [ ] 📱 Turn-based battle flow
 
 ### Phase 5: Advanced Battle Features
+
 - [ ] 🎭 Move animations
 - [ ] 🔊 Sound effects integration
 - [ ] 📈 Battle statistics tracking
@@ -71,6 +77,7 @@ A comprehensive Next.js application combining an advanced Pokédex with a Pokemo
 - [ ] 🎚️ Difficulty levels
 
 ### Phase 6: Polish & Enhancement
+
 - [ ] 📱 Responsive design optimization
 - [ ] ⚡ Performance optimization
 - [ ] 🔍 SEO improvements
@@ -115,16 +122,18 @@ src/
 ### 📚 Pokédex Features
 
 #### Pokemon Browser
+
 - **Grid/List Toggle**: Switch between card grid and detailed list
 - **Infinite Scroll**: Load Pokemon as user scrolls
 - **Search**: Real-time search by name, ID, or type
-- **Filters**: 
+- **Filters**:
   - Generation (I-IX)
   - Types (Fire, Water, etc.)
   - Stats ranges
   - Legendary/Mythical status
 
 #### Pokemon Detail Page
+
 - **Basic Info**: Name, ID, types, height, weight
 - **Stats**: HP, Attack, Defense, Speed (with visual bars)
 - **Abilities**: Description and effects
@@ -135,6 +144,7 @@ src/
 ### ⚔️ Battle System Features
 
 #### Battle Mechanics
+
 - **Turn-based Combat**: Speed determines turn order
 - **Type Effectiveness**: 2x, 0.5x, 0x damage multipliers
 - **Critical Hits**: Random critical hit chance
@@ -142,12 +152,14 @@ src/
 - **PP System**: Limited move usage
 
 #### Battle UI
+
 - **Health Bars**: Animated HP depletion
 - **Move Selection**: 4-move interface with PP display
 - **Battle Log**: Text-based action history
 - **Animations**: Move effects and transitions
 
 ### 👥 Team Management
+
 - **6 Pokemon Limit**: Standard team size
 - **Role Assignment**: Tank, DPS, Support roles
 - **Team Validation**: Check for weaknesses
@@ -158,29 +170,31 @@ src/
 ## 🎨 Design System
 
 ### Color Palette
+
 ```css
 /* Pokemon Type Colors */
---fire: #FF6B35;
---water: #4A90E2;
---grass: #7ED321;
---electric: #F5A623;
---psychic: #D63384;
---ice: #50C9E7;
---dragon: #7B68EE;
+--fire: #ff6b35;
+--water: #4a90e2;
+--grass: #7ed321;
+--electric: #f5a623;
+--psychic: #d63384;
+--ice: #50c9e7;
+--dragon: #7b68ee;
 --dark: #424242;
---fighting: #DC2626;
---poison: #9333EA;
---ground: #D97706;
---flying: #06B6D4;
---bug: #84CC16;
---rock: #78716C;
---ghost: #6366F1;
---steel: #6B7280;
---normal: #A3A3A3;
---fairy: #EC4899;
+--fighting: #dc2626;
+--poison: #9333ea;
+--ground: #d97706;
+--flying: #06b6d4;
+--bug: #84cc16;
+--rock: #78716c;
+--ghost: #6366f1;
+--steel: #6b7280;
+--normal: #a3a3a3;
+--fairy: #ec4899;
 ```
 
 ### Typography
+
 - **Headings**: Inter Bold
 - **Body**: Inter Regular
 - **Monospace**: JetBrains Mono (for stats/numbers)
@@ -190,15 +204,19 @@ src/
 ## 🚀 Development Phases
 
 ### Week 1: Foundation (Phase 1-2)
+
 Focus on setup and basic Pokédex functionality
 
 ### Week 2: Enhanced Pokédex (Phase 2-3)
+
 Complete all Pokédex features and team management
 
 ### Week 3: Battle System (Phase 4-5)
+
 Implement core battle mechanics and advanced features
 
 ### Week 4: Polish & Deploy (Phase 6)
+
 Testing, optimization, and deployment
 
 ---
@@ -218,10 +236,11 @@ Testing, optimization, and deployment
 ## 🔄 Current Status: Foundation Phase
 
 **Next Steps:**
+
 1. Configure shadcn/ui
 2. Install TanStack Query
 3. Create basic TypeScript types
 4. Setup project folder structure
 
 **Estimated Time to MVP**: 2-3 weeks
-**Current Phase**: Phase 1 - Foundation & Setup 
+**Current Phase**: Phase 1 - Foundation & Setup
