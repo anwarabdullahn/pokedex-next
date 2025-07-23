@@ -5,6 +5,7 @@ import { SimplePokemon, PokemonTypeName } from '@/lib/types/pokemon'
 import { cva } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 import { useFavorites } from '@/lib/hooks/use-favorites'
+import { getPokemonSpriteUrl } from '@/lib/utils/pokemon-utils'
 import { Heart } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -47,6 +48,15 @@ export function PokemonCard({ pokemon, className }: PokemonCardProps) {
                 fill
                 className="object-contain p-2 group-hover:scale-110 transition-transform duration-200"
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                onError={(e) => {
+                  // Fallback to regular sprite if official artwork fails
+                  const target = e.target as HTMLImageElement;
+                  if (target.src.includes('official-artwork')) {
+                    target.src = getPokemonSpriteUrl(pokemon.id, false);
+                  } else {
+                    target.src = '/placeholder-pokemon.svg';
+                  }
+                }}
               />
               
               {/* Pokemon ID Badge */}
@@ -77,11 +87,17 @@ export function PokemonCard({ pokemon, className }: PokemonCardProps) {
         variant="ghost"
         size="sm"
         onClick={handleFavoriteClick}
-        className={`absolute top-2 left-2 w-8 h-8 p-0 bg-white/80 hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity z-10 ${
-          isFavorite(pokemon.id) ? 'opacity-100' : ''
-        }`}
+        className={cn(
+          "absolute top-2 left-2 w-8 h-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity",
+          "bg-white/90 hover:bg-white shadow-md",
+          isFavorite(pokemon.id) && "opacity-100 text-red-500 hover:text-red-600"
+        )}
+        title={isFavorite(pokemon.id) ? "Remove from favorites" : "Add to favorites"}
       >
-        <Heart className={`w-4 h-4 ${isFavorite(pokemon.id) ? 'text-red-500 fill-current' : 'text-gray-600'}`} />
+        <Heart className={cn(
+          "w-4 h-4",
+          isFavorite(pokemon.id) && "fill-current"
+        )} />
       </Button>
     </div>
   )

@@ -11,6 +11,7 @@ import { Plus, X, Search, Save, Shuffle, Loader2 } from 'lucide-react'
 import { usePokemon } from '@/lib/hooks/use-pokemon'
 import { useFilteredPokemon } from '@/lib/hooks/use-pokemon'
 import { PokemonTypeName, TYPE_COLORS } from '@/lib/types/pokemon'
+import { getPokemonSpriteUrl, filterDisplayablePokemon } from '@/lib/utils/pokemon-utils'
 import { cva } from 'class-variance-authority'
 import Image from 'next/image'
 
@@ -276,19 +277,17 @@ export function TeamBuilder() {
         return {
           id: detailData.id,
           name: detailData.name,
-          types: detailData.types.map((t: any) => t.type.name),
-          sprite: detailData.sprites.other?.['official-artwork']?.front_default || 
-                  detailData.sprites.front_default || 
-                  '/placeholder-pokemon.png',
+          types: detailData.types.map((t: { type: { name: string } }) => t.type.name),
+          sprite: getPokemonSpriteUrl(detailData.id),
           stats: {
-            hp: detailData.stats.find((s: any) => s.stat.name === 'hp')?.base_stat || 100,
-            attack: detailData.stats.find((s: any) => s.stat.name === 'attack')?.base_stat || 100,
-            defense: detailData.stats.find((s: any) => s.stat.name === 'defense')?.base_stat || 100,
-            'special-attack': detailData.stats.find((s: any) => s.stat.name === 'special-attack')?.base_stat || 100,
-            'special-defense': detailData.stats.find((s: any) => s.stat.name === 'special-defense')?.base_stat || 100,
-            speed: detailData.stats.find((s: any) => s.stat.name === 'speed')?.base_stat || 100
+            hp: detailData.stats.find((s: { stat: { name: string }, base_stat: number }) => s.stat.name === 'hp')?.base_stat || 100,
+            attack: detailData.stats.find((s: { stat: { name: string }, base_stat: number }) => s.stat.name === 'attack')?.base_stat || 100,
+            defense: detailData.stats.find((s: { stat: { name: string }, base_stat: number }) => s.stat.name === 'defense')?.base_stat || 100,
+            'special-attack': detailData.stats.find((s: { stat: { name: string }, base_stat: number }) => s.stat.name === 'special-attack')?.base_stat || 100,
+            'special-defense': detailData.stats.find((s: { stat: { name: string }, base_stat: number }) => s.stat.name === 'special-defense')?.base_stat || 100,
+            speed: detailData.stats.find((s: { stat: { name: string }, base_stat: number }) => s.stat.name === 'speed')?.base_stat || 100
           },
-          totalStats: detailData.stats.reduce((sum: number, stat: any) => sum + stat.base_stat, 0),
+          totalStats: detailData.stats.reduce((sum: number, stat: { base_stat: number }) => sum + stat.base_stat, 0),
           isLegendary: detailData.id > 144 && detailData.id < 152, // Simple legendary check
         }
       })
@@ -299,7 +298,7 @@ export function TeamBuilder() {
       // Step 3: Apply balanced selection algorithm
       const selectedTeam: TeamPokemon[] = []
       const usedTypes = new Set<string>()
-      const typeGroups: { [key: string]: any[] } = {}
+      const typeGroups: { [key: string]: TeamPokemon[] } = {}
       
       // Group candidates by primary type
       candidates.forEach(pokemon => {
@@ -318,77 +317,40 @@ export function TeamBuilder() {
       let roleIndex = 0
       
       for (let slot = 0; slot < 6; slot++) {
-        let selectedPokemon = null
+        let selectedPokemon: TeamPokemon | null = null
         
         // Try to pick from unused types first
         const unusedTypes = availableTypes.filter(type => 
           !usedTypes.has(type) && typeGroups[type].length > 0
         )
         
-        let candidatePool = []
-        
         if (unusedTypes.length > 0) {
           // Pick from unused type
           const randomType = unusedTypes[Math.floor(Math.random() * unusedTypes.length)]
-          candidatePool = typeGroups[randomType]
+          const typePool = typeGroups[randomType]
+          selectedPokemon = typePool[Math.floor(Math.random() * typePool.length)]
+          usedTypes.add(randomType)
+          
+          // Remove selected Pokemon from pool
+          typeGroups[randomType] = typeGroups[randomType].filter(p => p.id !== selectedPokemon!.id)
         } else {
-          // Allow type reuse but prefer less used types
-          candidatePool = candidates.filter(p => 
-            !selectedTeam.some(selected => selected.id === p.id)
-          )
-        }
-        
-        if (candidatePool.length > 0) {
-          // Apply role-based selection
-          const currentRole = statRoles[roleIndex % statRoles.length]
-          
-          let roleFiltered = candidatePool
-          switch (currentRole) {
-            case 'fast':
-              roleFiltered = candidatePool.sort((a, b) => b.stats.speed - a.stats.speed).slice(0, 3)
-              break
-            case 'tanky':
-              roleFiltered = candidatePool.sort((a, b) => 
-                (b.stats.hp + b.stats.defense) - (a.stats.hp + a.stats.defense)
-              ).slice(0, 3)
-              break
-            case 'attacker':
-              roleFiltered = candidatePool.sort((a, b) => b.stats.attack - a.stats.attack).slice(0, 3)
-              break
-            case 'special':
-              roleFiltered = candidatePool.sort((a, b) => b.stats['special-attack'] - a.stats['special-attack']).slice(0, 3)
-              break
-            case 'balanced':
-              roleFiltered = candidatePool.sort((a, b) => b.totalStats - a.totalStats).slice(0, 3)
-              break
-            default:
-              roleFiltered = candidatePool.slice(0, 3)
-          }
-          
-          selectedPokemon = roleFiltered[Math.floor(Math.random() * roleFiltered.length)]
-          
-          if (selectedPokemon) {
-            selectedTeam.push({
-              id: selectedPokemon.id,
-              name: selectedPokemon.name,
-              types: selectedPokemon.types,
-              sprite: selectedPokemon.sprite,
-              stats: selectedPokemon.stats
-            })
+          // Pick from any remaining Pokemon
+          const allRemaining = availableTypes.flatMap(type => typeGroups[type])
+          if (allRemaining.length > 0) {
+            selectedPokemon = allRemaining[Math.floor(Math.random() * allRemaining.length)]
             
-            // Mark types as used (but allow some reuse)
-            if (usedTypes.size < 4) { // Only restrict for first 4 slots
-              usedTypes.add(selectedPokemon.types[0])
-            }
-            
-            // Remove from candidate pool
-            Object.keys(typeGroups).forEach(type => {
-              typeGroups[type] = typeGroups[type].filter(p => p.id !== selectedPokemon.id)
-            })
+            // Remove from pool
+            const pokemonType = selectedPokemon.types[0]
+            typeGroups[pokemonType] = typeGroups[pokemonType].filter(p => p.id !== selectedPokemon!.id)
           }
         }
         
-        roleIndex++
+        if (selectedPokemon) {
+          selectedTeam.push(selectedPokemon)
+          console.log(`Selected ${selectedPokemon.name} for slot ${slot + 1}`)
+        }
+        
+        roleIndex = (roleIndex + 1) % statRoles.length
       }
       
       console.log('Generated balanced team:', selectedTeam.map(p => `${p.name} (${p.types.join('/')})`))
@@ -610,6 +572,14 @@ export function TeamBuilder() {
                               fill
                               className="object-contain"
                               sizes="64px"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                if (target.src.includes('official-artwork')) {
+                                  target.src = getPokemonSpriteUrl(pokemon.id, false);
+                                } else {
+                                  target.src = '/placeholder-pokemon.svg';
+                                }
+                              }}
                             />
                           </div>
                           <div className="font-medium text-sm capitalize mb-1">
@@ -713,6 +683,14 @@ function TeamSlot({
               fill
               className="object-contain"
               sizes="48px"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                if (target.src.includes('official-artwork')) {
+                  target.src = getPokemonSpriteUrl(pokemon.id, false);
+                } else {
+                  target.src = '/placeholder-pokemon.svg';
+                }
+              }}
             />
           </div>
           <div className="font-medium text-xs capitalize mb-1">

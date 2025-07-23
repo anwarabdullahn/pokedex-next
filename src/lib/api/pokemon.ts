@@ -1,4 +1,5 @@
 import { Pokemon, PokemonListItem, PaginatedResponse, SimplePokemon, Type } from '@/lib/types/pokemon'
+import { filterDisplayablePokemon, getPokemonSpriteUrl, isValidPokemonId } from '@/lib/utils/pokemon-utils'
 
 const POKEAPI_BASE_URL = 'https://pokeapi.co/api/v2'
 
@@ -141,7 +142,7 @@ export function transformToSimplePokemon(pokemon: Pokemon): SimplePokemon {
     name: pokemon.name,
     sprite: pokemon.sprites.other?.['official-artwork']?.front_default || 
             pokemon.sprites.front_default || 
-            '/placeholder-pokemon.png',
+            getPokemonSpriteUrl(pokemon.id),
     types: pokemon.types.map(type => type.type.name)
   }
 }
@@ -155,7 +156,7 @@ export function createSimplePokemonFromListItem(
   return {
     id,
     name: item.name,
-    sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`,
+    sprite: getPokemonSpriteUrl(id),
     types: typeMapping?.[id] || [] // Use type mapping if available
   }
 }
@@ -183,7 +184,13 @@ export async function createPokemonBatchFromListWithTypes(
 
 // NEW: Optimized batch creation without types (super fast)
 export function createPokemonBatchFromList(pokemonList: PokemonListItem[]): SimplePokemon[] {
-  return pokemonList.map(item => createSimplePokemonFromListItem(item))
+  // Filter out problematic Pokemon first
+  const validPokemonList = pokemonList.filter(item => {
+    const id = getPokemonIdFromUrl(item.url)
+    return isValidPokemonId(id)
+  })
+
+  return validPokemonList.map(item => createSimplePokemonFromListItem(item))
 }
 
 // NEW: Get paginated Pokemon with smart type loading
@@ -274,12 +281,17 @@ async function handleTypeFilterWithPagination(
   const paginatedList = typePokemonList.slice(offset, offset + limit)
   
   // OPTIMIZED: Create Pokemon with type info directly from type data
-  const pokemonData = paginatedList.map(item => {
+  const validPokemonList = paginatedList.filter(item => {
+    const id = getPokemonIdFromUrl(item.url)
+    return isValidPokemonId(id)
+  })
+
+  const pokemonData = validPokemonList.map(item => {
     const id = getPokemonIdFromUrl(item.url)
     return {
       id,
       name: item.name,
-      sprite: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${id}.png`,
+      sprite: getPokemonSpriteUrl(id),
       types: [typeFilter] // We know the type from the filter!
     }
   })

@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { ArrowRight, Zap, Sun, Moon, Star, Heart } from 'lucide-react'
+import { getPokemonSpriteUrl, isValidPokemonId } from '@/lib/utils/pokemon-utils'
 import Image from 'next/image'
 import Link from 'next/link'
 import { getPokemonIdFromUrl } from '@/lib/api/pokemon'
@@ -158,22 +159,30 @@ export function PokemonEvolutionChain({ evolutionChainUrl }: EvolutionChainProps
 function PokemonEvolutionCard({ pokemon }: { pokemon: EvolutionNode }) {
   const pokemonId = getPokemonIdFromUrl(pokemon.species.url)
   const pokemonName = pokemon.species.name
-  const imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemonId}.png`
+
+  // Don't render if Pokemon ID is invalid
+  if (!isValidPokemonId(pokemonId)) {
+    return null
+  }
 
   return (
     <Link href={`/pokemon/${pokemonId}`}>
       <div className="text-center p-4 rounded-lg border hover:shadow-md transition-shadow cursor-pointer group">
         <div className="w-20 h-20 mx-auto mb-2 relative">
           <Image
-            src={imageUrl}
+            src={getPokemonSpriteUrl(pokemonId)}
             alt={pokemonName}
             fill
             className="object-contain group-hover:scale-110 transition-transform"
             sizes="80px"
             onError={(e) => {
-              // Fallback to default sprite if official artwork fails
+              // Fallback to regular sprite if official artwork fails
               const target = e.target as HTMLImageElement;
-              target.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
+              if (target.src.includes('official-artwork')) {
+                target.src = getPokemonSpriteUrl(pokemonId, false);
+                             } else {
+                 target.src = '/placeholder-pokemon.svg';
+               }
             }}
           />
         </div>
